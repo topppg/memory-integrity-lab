@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memory-integrity-lab"
+version = "0.1.0"
+description = "Offline synthetic regression evaluation for agent memory integrity"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+authors = [{name = "Giorgio Sarno"}]
+dependencies = []
+
+[project.scripts]
+memory-integrity = "memory_integrity_lab.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["memory_integrity_lab*"]

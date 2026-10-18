@@ -55,6 +55,10 @@ class Memory:
     source: str
     subject: str = "default"
 
+    def __post_init__(self):
+        Event(self.event_id, self.tenant, self.key, self.value, self.at,
+              subject=self.subject, source=self.source)
+
 
 @dataclass(frozen=True)
 class Query:

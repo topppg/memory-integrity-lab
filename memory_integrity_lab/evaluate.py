@@ -30,7 +30,7 @@ class Result:
 
     @property
     def passed(self):
-        return all(outcome["passed"] for outcome in self.outcomes)
+        return bool(self.outcomes) and all(outcome["passed"] for outcome in self.outcomes)
 
     def to_dict(self):
         return {"schema_version": 1, "adapter": self.adapter, "seed": self.seed,
