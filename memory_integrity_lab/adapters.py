@@ -32,10 +32,14 @@ class InMemoryAdapter:
         self._events[event.event_id] = event
 
     def retrieve(self, query: Query) -> list[Memory]:
-        candidates = [event for event in self._events.values()
+        scoped = [event for event in self._events.values()
                       if event.tenant == query.tenant and event.key == query.key
-                      and event.subject == query.subject
-                      and event.at <= query.as_of]
+                      and event.subject == query.subject]
+        # Forgetting is retroactive. A later explicit put may create a new memory,
+        # but neither an as-of query nor replay may recover pre-tombstone values.
+        cutoff = max((event.at for event in scoped if event.operation == "delete"), default=-1)
+        candidates = [event for event in scoped if event.operation == "put"
+                      and cutoff < event.at <= query.as_of]
         if not candidates:
             return []
         event = max(candidates, key=lambda item: (item.at, item.event_id))
@@ -44,6 +48,17 @@ class InMemoryAdapter:
 
     def close(self) -> None:
         pass
+
+    def export_events(self) -> list[Event]:
+        """Audit export retains plaintext; this is logical, not physical, deletion."""
+        return sorted(self._events.values(), key=lambda event: (event.at, event.event_id))
+
+    @classmethod
+    def from_events(cls, events):
+        store = cls()
+        for event in sorted(events, key=lambda item: (item.at, item.event_id)):
+            store.ingest(event)
+        return store
 
 
 class ScopedAdapter:
