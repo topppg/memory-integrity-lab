@@ -1,0 +1,13 @@
+[
+  {
+    "case_id": "synthetic-custom-preference",
+    "events": [
+      {"event_id": "alice-1", "tenant": "example-org", "subject": "alice", "key": "drink", "value": "tea", "at": 1},
+      {"event_id": "alice-2", "tenant": "example-org", "subject": "alice", "key": "drink", "value": "coffee", "at": 3, "supersedes": "alice-1"}
+    ],
+    "probes": [
+      {"after": 2, "query": {"tenant": "example-org", "subject": "alice", "key": "drink", "as_of": 1}, "expected_ids": ["alice-1"], "category": "temporal"},
+      {"after": 2, "query": {"tenant": "example-org", "subject": "alice", "key": "drink", "as_of": 3}, "expected_ids": ["alice-2"], "category": "temporal"}
+    ]
+  }
+]

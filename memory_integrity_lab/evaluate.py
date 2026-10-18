@@ -80,7 +80,7 @@ def evaluate(cases, factory, name="reference", seed=7):
             returned = Counter(map(_signature, actual))
             correct = sum((exact & returned).values())
             passed = exact == returned and error is None
-            foreign = stale = 0
+            foreign = stale = unverifiable = 0
             for item in actual:
                 canonical = expected_events.get(item.event_id)
                 requested_scope = (probe.query.tenant, probe.query.subject, probe.query.key)
@@ -90,6 +90,8 @@ def evaluate(cases, factory, name="reference", seed=7):
                 # Resolve canonical source scope so forged return labels cannot hide leakage.
                 foreign += int(claimed_scope != requested_scope or
                                (canonical is not None and canonical_scope != requested_scope))
+                unverifiable += int(canonical is None or
+                                    (canonical is not None and _signature(item) != _signature(_canonical(canonical))))
                 if canonical and canonical_scope == requested_scope and canonical.event_id not in probe.expected_ids:
                     latest_expected = max((event.at for event in expected_events.values()
                                            if event.event_id in probe.expected_ids), default=probe.query.as_of + 1)
@@ -101,11 +103,12 @@ def evaluate(cases, factory, name="reference", seed=7):
             counts[f"{probe.category}_total"] += 1
             counts[f"{probe.category}_pass"] += int(passed)
             if probe.category == "isolation":
-                counts["isolation_safe"] += int(foreign == 0 and error is None)
+                counts["isolation_safe"] += int(foreign == 0 and unverifiable == 0 and error is None)
             outcomes.append({"case": case.case_id, "probe": index, "category": probe.category,
                              "query": asdict(probe.query), "passed": passed, "error": error,
                              "expected": [asdict(item) for item in expected],
-                             "actual": [asdict(item) for item in actual], "foreign_records": foreign})
+                             "actual": [asdict(item) for item in actual], "foreign_records": foreign,
+                             "unverifiable_records": unverifiable})
     metrics = {"precision": Metric(counts["correct"], counts["returned"]),
                "recall": Metric(counts["correct"], counts["expected"]),
                "stale_rate": Metric(counts["stale"], counts["returned"])}
