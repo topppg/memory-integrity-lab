@@ -21,6 +21,14 @@ class InMemoryAdapter:
         previous = self._events.get(event.event_id)
         if previous is not None and previous != event:
             raise ValueError("event ID collision")
+        if event.supersedes is not None:
+            target = self._events.get(event.supersedes)
+            if target is None:
+                raise ValueError("correction target must already exist")
+            if (target.tenant, target.key) != (event.tenant, event.key):
+                raise ValueError("correction must share target scope")
+            if event.at <= target.at:
+                raise ValueError("correction must be later than target")
         self._events[event.event_id] = event
 
     def retrieve(self, query: Query) -> list[Memory]:
