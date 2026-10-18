@@ -25,7 +25,8 @@ class InMemoryAdapter:
 
     def retrieve(self, query: Query) -> list[Memory]:
         candidates = [event for event in self._events.values()
-                      if event.tenant == query.tenant and event.key == query.key]
+                      if event.tenant == query.tenant and event.key == query.key
+                      and event.at <= query.as_of]
         if not candidates:
             return []
         event = max(candidates, key=lambda item: (item.at, item.event_id))
