@@ -17,6 +17,12 @@ class InMemoryAdapter:
     def __init__(self):
         self._events: dict[str, Event] = {}
 
+    @staticmethod
+    def authoritative(event: Event) -> bool:
+        # Source labels must be assigned by the integrating application, never
+        # inferred from the event's value or supplied by untrusted content.
+        return event.source == "user"
+
     def ingest(self, event: Event) -> None:
         previous = self._events.get(event.event_id)
         if previous is not None and previous != event:
@@ -29,12 +35,14 @@ class InMemoryAdapter:
                 raise ValueError("correction must share target scope")
             if event.at <= target.at:
                 raise ValueError("correction must be later than target")
+            if not self.authoritative(event) or not self.authoritative(target):
+                raise ValueError("corrections require authenticated user sources")
         self._events[event.event_id] = event
 
     def retrieve(self, query: Query) -> list[Memory]:
         scoped = [event for event in self._events.values()
                       if event.tenant == query.tenant and event.key == query.key
-                      and event.subject == query.subject]
+                      and event.subject == query.subject and self.authoritative(event)]
         # Forgetting is retroactive. A later explicit put may create a new memory,
         # but neither an as-of query nor replay may recover pre-tombstone values.
         cutoff = max((event.at for event in scoped if event.operation == "delete"), default=-1)
