@@ -10,12 +10,13 @@ class Event:
     key: str
     value: str
     at: int
+    subject: str = "default"
     operation: str = "put"
     source: str = "user"
     supersedes: str | None = None
 
     def __post_init__(self):
-        for name in ("event_id", "tenant", "key", "source"):
+        for name in ("event_id", "tenant", "subject", "key", "source"):
             if not isinstance(getattr(self, name), str) or not getattr(self, name).strip():
                 raise ValueError(f"{name} must be a nonempty string")
         if type(self.at) is not int or self.at < 0:
@@ -52,6 +53,7 @@ class Memory:
     event_id: str
     at: int
     source: str
+    subject: str = "default"
 
 
 @dataclass(frozen=True)
@@ -59,11 +61,14 @@ class Query:
     tenant: str
     key: str
     as_of: int
+    subject: str = "default"
 
     def __post_init__(self):
         if not isinstance(self.tenant, str) or not self.tenant.strip():
             raise ValueError("tenant must be nonempty")
         if not isinstance(self.key, str) or not self.key.strip():
             raise ValueError("key must be nonempty")
+        if not isinstance(self.subject, str) or not self.subject.strip():
+            raise ValueError("subject must be nonempty")
         if type(self.as_of) is not int or self.as_of < 0:
             raise ValueError("as_of must be a nonnegative integer")
