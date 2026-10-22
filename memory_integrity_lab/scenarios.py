@@ -98,3 +98,28 @@ def synthetic_suite(seed: int = 7) -> tuple[Case, ...]:
         Probe(3, query(), (a.event_id,), "poisoning"),
     ))
     return temporal, forgetting, isolation, authority
+
+
+def load_cases(data):
+    """Parse a strict JSON-compatible suite. Expected values resolve from event IDs."""
+    if not isinstance(data, list) or not data:
+        raise ValueError("suite must be a nonempty array")
+    cases = []
+    try:
+        for item in data:
+            if set(item) != {"case_id", "events", "probes"}:
+                raise ValueError("invalid case fields")
+            events = tuple(Event.from_dict(event) for event in item["events"])
+            probes = tuple(Probe(probe["after"], Query(**probe["query"]),
+                                 tuple(probe["expected_ids"]), probe["category"])
+                           for probe in item["probes"])
+            if any(set(probe) != {"after", "query", "expected_ids", "category"} for probe in item["probes"]):
+                raise ValueError("invalid probe fields")
+            if not probes:
+                raise ValueError("case must contain probes")
+            cases.append(Case(item["case_id"], events, probes))
+    except (TypeError, KeyError) as exc:
+        raise ValueError("invalid suite structure") from exc
+    if len({case.case_id for case in cases}) != len(cases):
+        raise ValueError("case IDs must be unique")
+    return tuple(cases)
