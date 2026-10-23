@@ -15,6 +15,7 @@ class EvaluationTests(unittest.TestCase):
 
     def test_empty_metrics_are_not_perfect_scores(self):
         result = evaluate((), InMemoryAdapter)
+        self.assertFalse(result.passed)
         self.assertIsNone(result.metrics["precision"].value)
         self.assertIsNone(result.metrics["deletion_compliance"].value)
 
@@ -27,6 +28,17 @@ class EvaluationTests(unittest.TestCase):
         result = evaluate((case,), Liar)
         self.assertFalse(result.passed)
         self.assertEqual(0, result.metrics["isolation_compliance"].value)
+
+    def test_unknown_or_forged_provenance_cannot_claim_isolation(self):
+        class Fabricator(InMemoryAdapter):
+            def retrieve(self, query):
+                return [Memory("a", "k", "foreign-secret", "invented", 1, "user")]
+
+        case = Case("unverifiable", (), (Probe(0, Query("a", "k", 1), (), "isolation"),))
+        result = evaluate((case,), Fabricator)
+        self.assertEqual(0, result.metrics["isolation_compliance"].value)
+        self.assertEqual(0, result.outcomes[0]["foreign_records"])
+        self.assertEqual(1, result.outcomes[0]["unverifiable_records"])
 
     def test_duplicate_records_reduce_precision(self):
         class Duplicate(InMemoryAdapter):

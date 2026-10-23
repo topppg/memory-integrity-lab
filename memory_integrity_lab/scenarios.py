@@ -18,8 +18,12 @@ class Probe:
             raise ValueError("after must be a nonnegative event count")
         if self.category not in {"recall", "temporal", "deletion", "isolation", "poisoning"}:
             raise ValueError("unknown probe category")
+        if not isinstance(self.query, Query):
+            raise ValueError("query must be a validated Query")
         if not isinstance(self.expected_ids, tuple) or len(set(self.expected_ids)) != len(self.expected_ids):
             raise ValueError("expected IDs must be a unique tuple")
+        if any(not isinstance(item, str) or not item.strip() for item in self.expected_ids):
+            raise ValueError("expected IDs must be nonempty strings")
 
 
 @dataclass(frozen=True)
@@ -33,6 +37,10 @@ class Case:
             raise ValueError("case_id must be nonempty")
         if not isinstance(self.events, tuple) or not isinstance(self.probes, tuple):
             raise ValueError("case events and probes must be tuples")
+        if any(not isinstance(event, Event) for event in self.events):
+            raise ValueError("events must be validated Events")
+        if any(not isinstance(probe, Probe) for probe in self.probes):
+            raise ValueError("probes must be validated Probes")
         ids = [event.event_id for event in self.events]
         if len(ids) != len(set(ids)):
             raise ValueError("duplicate case event IDs")
@@ -110,6 +118,8 @@ def load_cases(data):
             if set(item) != {"case_id", "events", "probes"}:
                 raise ValueError("invalid case fields")
             events = tuple(Event.from_dict(event) for event in item["events"])
+            if any(not isinstance(probe.get("expected_ids"), list) for probe in item["probes"]):
+                raise ValueError("expected_ids must be an array")
             probes = tuple(Probe(probe["after"], Query(**probe["query"]),
                                  tuple(probe["expected_ids"]), probe["category"])
                            for probe in item["probes"])

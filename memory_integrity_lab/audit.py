@@ -16,6 +16,13 @@ class Anchor:
     count: int
     head: str
 
+    def __post_init__(self):
+        if type(self.count) is not int or self.count < 0:
+            raise ValueError("anchor count must be a nonnegative integer")
+        if (not isinstance(self.head, str) or len(self.head) != 64
+                or any(character not in "0123456789abcdef" for character in self.head)):
+            raise ValueError("anchor head must be a SHA-256 hex digest")
+
 
 def _digest(previous, event):
     payload = json.dumps(event.to_dict(), sort_keys=True, separators=(",", ":"))
@@ -41,7 +48,7 @@ def verify(rows, anchor: Anchor):
         event = Event.from_dict(row["event"])
         if event.event_id in seen:
             raise ValueError("duplicate event ID in archive")
-        if (row["sequence"] != index or row["previous"] != previous
+        if (type(row["sequence"]) is not int or row["sequence"] != index or row["previous"] != previous
                 or row["hash"] != _digest(previous, event)):
             raise ValueError("archive content or ordering was altered")
         seen.add(event.event_id)
